@@ -2424,12 +2424,6 @@
                         </a></li>
                       
                         <li><a
-                          href='#meetingeventmeetingselfmutedbyothers'
-                          class='regular pre-open'>
-                          ⓔ meeting:self:mutedByOthers
-                        </a></li>
-                      
-                        <li><a
                           href='#meetingeventmeetingselfguestadmitted'
                           class='regular pre-open'>
                           ⓔ meeting:self:guestAdmitted
@@ -3545,15 +3539,15 @@
                       <li class='h5'>Events</li>
                       
                         <li><a
-                          href='#memberseventmemberscontentupdate'
-                          class='regular pre-open'>
-                          ⓔ members:content:update
-                        </a></li>
-                      
-                        <li><a
                           href='#memberseventmembersupdate'
                           class='regular pre-open'>
                           ⓔ members:update
+                        </a></li>
+                      
+                        <li><a
+                          href='#memberseventmemberscontentupdate'
+                          class='regular pre-open'>
+                          ⓔ members:content:update
                         </a></li>
                       
                         <li><a
@@ -5245,6 +5239,71 @@ app.get(`/oauth/redirect`, (req, res, next) =&gt; {
           
           <section class='p2 mb2 clearfix bg-white minishadow'>
 
+      This will direct the user agent to the Cisco login page. Once the user logs in, they'll be redirected back to your app and the SDK will handle parsing the URL.
+    */
+    webex.authorization.initiateLogin();
+  }
+});</span></pre>
+<h4>Bundling</h4>
+<p>You'll need to bundle the SDK to use it in a web browser. Right now, we do all our SDK testing with <a href="http://browserify.org/">Browserify</a>, but our <a href="https://github.com/webex/react-ciscospark">Cisco Webex Widgets</a> use <a href="https://webpack.github.io/">webpack</a>.</p>
+<p>The following snippet is the bare minimum to get our code into a form suitable for a web browser. You'll probably want to additionally pipe it through a minifier like <a href="https://github.com/mishoo/UglifyJS2">UglifyJS</a> before going to production.</p>
+<pre class='hljs'>npm install webex
+npm install -g browserify
+<span class="hljs-built_in">echo</span> <span class="hljs-string">"window.webex = require('webex')"</span> &gt; ./index.js
+browserify index.js &gt; bundle.js</pre>
+<p>Then, just load your bundle using:</p>
+<pre class='hljs'><span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">src</span>=<span class="hljs-string">"/bundle.js"</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span></pre>
+<h3>NodeJS</h3>
+<p>Though the implicit flow is great for single page apps, it's not ideal for integrations that might need to do things on your users' behalf months in the future. We additionally support the <a href="https://tools.ietf.org/html/rfc6749#section-4.1">OAuth 2.0 Authorization Code Grant</a> flow, but due to its complexity, there's a bit you'll need to wire up in your app to take advantage of it. The following is an example of how an Express app might do authentication.</p>
+<pre class='hljs'><span class="hljs-keyword">var</span> Webex = <span class="hljs-built_in">require</span>(<span class="hljs-string">'webex'</span>);
+<span class="hljs-keyword">const</span> assert = <span class="hljs-built_in">require</span>(<span class="hljs-string">`assert`</span>);
+
+app.use(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">req, res, next</span>) </span>{
+  req.webex = Webex.init({
+    <span class="hljs-attr">config</span>: {
+      <span class="hljs-attr">credentials</span>: {
+        <span class="hljs-attr">authorizationString</span>: &lt;your auth URL&gt;,
+        client_secret: &lt;your client secret&gt;
+      },
+    }
+  });
+
+  req.webex.once(`ready`, next);
+});
+
+app.get(`/login`, (req, res) =&gt; {
+  // buildLoginUrl() defaults to the implicit grant flow so explicitly pass
+  // `confidential` to generate a URL suitable to the Authorization Code grant
+  // flow.
+  res
+    .redirect(req.webex.credentials.buildLoginUrl({clientType: 'confidential'}))
+    .end();
+});
+
+app.get(`/oauth/redirect`, (req, res, next) =&gt; {
+  assert(req.params.code);
+  req.webex.requestAuthorizationCodeGrant(req.params)
+    .then(() =&gt; {
+      res.redirect(`/`).end();
+    })
+    .catch(next);
+});</pre>
+
+    
+  </section>
+</div>
+          
+          <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='webex-js-sdk'>
+      webex-js-sdk
+    </h3>
+    
+    
+  </div>
   
   <div class='clearfix'>
     
@@ -8554,7 +8613,7 @@ enabled</p>
   
     <p>
       Type:
-      MediaStream
+      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a>
     </p>
   
   
@@ -8586,11 +8645,11 @@ enabled</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='calllocalscreenshare'>
+    <div class='border-bottom' id='callremotemediastream'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>localScreenShare</span>
+            <span class='code strong strong truncate'>remoteMediaStream</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -11107,14 +11166,8 @@ shortly after (but as a direct result of) locally calling
     </p>
   
   
-
-  
-  
-  
-  
-  
-  
-
+    <div class='pre p1 fill-light mt0'>membership:disconnected</div>
+   
   
 
   
@@ -28951,11 +29004,11 @@ Emitted when a user can take actions on a meeting such as lock, unlock, assign h
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingeventmeetingselfmutedbyothers'>
+    <div class='border-bottom' id='meetingeventmeetingselfguestadmitted'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:self:mutedByOthers</span>
+            <span class='code strong strong truncate'>meeting:self:guestAdmitted</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -29025,11 +29078,11 @@ Emitted when a member is muted by another member</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingeventmeetingselfguestadmitted'>
+    <div class='border-bottom' id='meetingeventmeetingselflobbywaiting'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:self:guestAdmitted</span>
+            <span class='code strong strong truncate'>meeting:self:lobbyWaiting</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -29099,11 +29152,11 @@ Emitted when a member admitted to the meeting by another member</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='meetingeventmeetingselflobbywaiting'>
+    <div class='border-bottom' id='meetingeventmeetingreconnectionstarting'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:self:lobbyWaiting</span>
+            <span class='code strong strong truncate'>meeting:reconnectionStarting</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -29132,75 +29185,6 @@ Emitted when this member enters the lobby and is waiting for the webex meeting t
       Type:
       <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
     </p>
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>payload</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
-          
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='meetingeventmeetingreconnectionstarting'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>meeting:reconnectionStarting</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    
-      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/66497469993fd97b863018753a49acfa8766dd30/packages/node_modules/@webex/plugin-meetings/src/meeting/index.js#L244-L2501'>
-      <span>packages/node_modules/@webex/plugin-meetings/src/meeting/index.js</span>
-      </a>
-    
-  </div>
-  
-
-  <p>Reconnection Starting Event
-Emitted when reconnection of media to the active meeting was successful</p>
-
- 
-  
-    <div class='pre p1 fill-light mt0'>meeting:reconnectionStarting</div>
-   
   
   
 
@@ -29257,13 +29241,8 @@ Emitted when reconnection of media to the active meeting was successful</p>
 
  
   
-    <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
+    <div class='pre p1 fill-light mt0'>meeting:reconnectionStarting</div>
    
-  
-    <p>
-      Type:
-      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
-    </p>
   
   
 
@@ -29331,7 +29310,7 @@ Emitted when reconnection of media to the active meeting was successful</p>
 
  
   
-    <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
+    <div class='pre p1 fill-light mt0'>meeting:reconnectionSuccess</div>
    
   
     <p>
@@ -29356,6 +29335,80 @@ Emitted when reconnection of media to the active meeting was successful</p>
       
         <div class='space-bottom0'>
           <span class='code bold'>error</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Error">Error</a>)</code>
+          
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='meetingeventmeetingselfmutedbyothers'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>meeting:self:mutedByOthers</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    
+      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/66497469993fd97b863018753a49acfa8766dd30/packages/node_modules/@webex/plugin-meetings/src/meeting/index.js#L244-L2501'>
+      <span>packages/node_modules/@webex/plugin-meetings/src/meeting/index.js</span>
+      </a>
+    
+  </div>
+  
+
+  <p>Reconnection Failure Event
+Emitted when reconnection of media to the active meeting was successful</p>
+
+ 
+  
+    <div class='pre p1 fill-light mt0'>meeting:reconnectionFailure</div>
+   
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>payload</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object">Object</a>)</code>
           
           
         </div>
@@ -40180,11 +40233,11 @@ Used to emit events internally between modules specific to an object</p>
     <div class='py1 quiet mt1 prose-big'>Events</div>
     <div class="clearfix">
   
-    <div class='border-bottom' id='memberseventmemberscontentupdate'>
+    <div class='border-bottom' id='memberseventmembersupdate'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>members:content:update</span>
+            <span class='code strong strong truncate'>members:update</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -40207,81 +40260,6 @@ Emitted when who is sharing changes</p>
  
   
     <div class='pre p1 fill-light mt0'>members:content:update</div>
-   
-  
-  
-
-  
-  
-  
-  
-  
-  
-
-  
-
-  
-    <div class='py1 quiet mt1 prose-big'>Properties</div>
-    <div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>activeContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          
-          
-        </div>
-      
-        <div class='space-bottom0'>
-          <span class='code bold'>endedContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
-          
-          
-        </div>
-      
-    </div>
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-</section>
-
-      </div>
-    </div>
-  
-    <div class='border-bottom' id='memberseventmembersupdate'>
-      <div class="clearfix small pointer toggle-sibling">
-        <div class="py1 contain">
-            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>members:update</span>
-        </div>
-      </div>
-      <div class="clearfix display-none toggle-target">
-        <section class='p2 mb2 clearfix bg-white minishadow'>
-
-  
-  <div class='clearfix'>
-    
-    
-      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/66497469993fd97b863018753a49acfa8766dd30/packages/node_modules/@webex/plugin-meetings/src/members/index.js#L62-L671'>
-      <span>packages/node_modules/@webex/plugin-meetings/src/members/index.js</span>
-      </a>
-    
-  </div>
-  
-
-  <p>Members Update Event
-Emitted when something in the roster list needs to be updated</p>
-
- 
-  
-    <div class='pre p1 fill-light mt0'>members:update</div>
    
   
   
@@ -40324,6 +40302,81 @@ Emitted when something in the roster list needs to be updated</p>
           <span class='code bold'>full</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>)</code>
           : array the full members collection
 
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='memberseventmemberscontentupdate'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>members:content:update</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    
+      <a class='fr fill-darken0 round round pad1x quiet h5' href='https://github.com/webex/webex-js-sdk/blob/66497469993fd97b863018753a49acfa8766dd30/packages/node_modules/@webex/plugin-meetings/src/members/index.js#L62-L671'>
+      <span>packages/node_modules/@webex/plugin-meetings/src/members/index.js</span>
+      </a>
+    
+  </div>
+  
+
+  <p>Members Update Event
+Emitted when something in the roster list needs to be updated</p>
+
+ 
+  
+    <div class='pre p1 fill-light mt0'>members:update</div>
+   
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Properties</div>
+    <div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>activeContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          
+          
+        </div>
+      
+        <div class='space-bottom0'>
+          <span class='code bold'>endedContentSharingId</span> <code class='quiet'>(<a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String">String</a>)</code>
+          
           
         </div>
       
